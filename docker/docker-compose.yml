@@ -1,0 +1,32 @@
+# Standalone deployment of the Cogent Hub Connector (no Home Assistant Supervisor).
+# Usage:
+#   cd docker
+#   cp .env.example .env   &&   edit .env   (set HA_TOKEN + CLOUD_API_KEY)
+#   docker compose up -d --build
+#   docker compose logs -f
+services:
+  cogent-hub:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: cogenthub:latest
+    container_name: cogent-hub
+    restart: unless-stopped
+    environment:
+      HA_WS_URL: ${HA_WS_URL:-ws://192.168.1.39:8123/api/websocket}
+      HA_TOKEN: ${HA_TOKEN:?set HA_TOKEN in .env}
+      CLOUD_BASE_URL: ${CLOUD_BASE_URL:-https://api.cogentlog.io}
+      CLOUD_API_KEY: ${CLOUD_API_KEY:?set CLOUD_API_KEY in .env}
+      HUB_ID: ${HUB_ID:-Hub1}
+      INCLUDE_DOMAINS: ${INCLUDE_DOMAINS:-sensor,binary_sensor,switch,light}
+      EXCLUDE_ENTITIES: ${EXCLUDE_ENTITIES:-}
+      SEND_ATTRIBUTES: ${SEND_ATTRIBUTES:-true}
+      BATCH_SIZE: ${BATCH_SIZE:-50}
+      FLUSH_INTERVAL_SECONDS: ${FLUSH_INTERVAL_SECONDS:-10}
+      MAX_SPOOL_EVENTS: ${MAX_SPOOL_EVENTS:-50000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - cogent-hub-data:/data
+
+volumes:
+  cogent-hub-data:

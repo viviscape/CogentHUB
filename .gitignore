@@ -17,3 +17,4 @@ spool.jsonl
 Thumbs.db
 .vs/
 .idea/
+docker/.env
