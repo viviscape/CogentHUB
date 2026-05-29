@@ -1,0 +1,48 @@
+name: Cogent Hub Connector
+version: "0.1.0"
+slug: cogent_hub
+description: >-
+  Streams Home Assistant telemetry to the Cogent Cloud API and (Phase 2)
+  executes cloud-issued device triggers on the hub.
+url: https://github.com/viviscape/CogentHUB
+arch:
+  - aarch64
+  - amd64
+  - armv7
+  - armhf
+  - i386
+init: false
+startup: application
+boot: auto
+# Grants access to the Home Assistant Core API/WebSocket via the Supervisor proxy
+# using SUPERVISOR_TOKEN. Required to subscribe to events and (Phase 2) call services.
+homeassistant_api: true
+hassio_api: false
+options:
+  cloud_base_url: "https://api.cogentlog.io"
+  cloud_api_key: ""
+  hub_id: "Hub1"
+  include_domains:
+    - sensor
+    - binary_sensor
+    - switch
+    - light
+  exclude_entities: []
+  send_attributes: true
+  batch_size: 50
+  flush_interval_seconds: 10
+  max_spool_events: 50000
+  log_level: info
+schema:
+  cloud_base_url: url
+  cloud_api_key: password
+  hub_id: str
+  include_domains:
+    - str
+  exclude_entities:
+    - str
+  send_attributes: bool
+  batch_size: int(1,1000)
+  flush_interval_seconds: int(1,3600)
+  max_spool_events: int(0,1000000)
+  log_level: list(trace|debug|info|notice|warning|error|fatal)

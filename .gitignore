@@ -1,0 +1,19 @@
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Add-on runtime data
+cogent_hub/app/data/
+spool.jsonl
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
