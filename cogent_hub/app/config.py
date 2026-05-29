@@ -46,6 +46,11 @@ class Config:
     max_spool_events: int = 50000
     log_level: str = "info"
 
+    # Phase 2: cloud -> device control.
+    enable_commands: bool = True
+    command_poll_interval: int = 5
+    controllable_domains: list[str] = field(default_factory=list)
+
     # Connection to Home Assistant Core.
     supervisor_token: str = ""
     ha_ws_url: str = SUPERVISOR_WS_URL
@@ -55,6 +60,10 @@ class Config:
     @property
     def telemetry_url(self) -> str:
         return f"{self.cloud_base_url.rstrip('/')}/api/v1/hub/telemetry"
+
+    @property
+    def commands_url(self) -> str:
+        return f"{self.cloud_base_url.rstrip('/')}/api/v1/hub/commands"
 
     @property
     def py_log_level(self) -> int:
@@ -81,7 +90,29 @@ def _env_fallback() -> dict:
         "flush_interval_seconds": int(os.getenv("FLUSH_INTERVAL_SECONDS", "10")),
         "max_spool_events": int(os.getenv("MAX_SPOOL_EVENTS", "50000")),
         "log_level": os.getenv("LOG_LEVEL", "info"),
+        "enable_commands": _as_bool(os.getenv("ENABLE_COMMANDS", "true")),
+        "command_poll_interval": int(os.getenv("COMMAND_POLL_INTERVAL", "5")),
+        "controllable_domains": _split(os.getenv("CONTROLLABLE_DOMAINS", "")),
     }
+
+
+# Domains the cloud may control by default (Phase 2 allowlist).
+DEFAULT_CONTROLLABLE_DOMAINS = ["switch", "light", "scene", "script", "input_boolean"]
+
+
+def _derive_rest_url(ws_url: str) -> str:
+    """Derive the Core REST base from a WebSocket URL (standalone/dev mode)."""
+    base = ws_url
+    if base.startswith("ws://"):
+        base = "http://" + base[len("ws://"):]
+    elif base.startswith("wss://"):
+        base = "https://" + base[len("wss://"):]
+    # strip the websocket path, leaving .../api
+    for suffix in ("/api/websocket", "/websocket"):
+        if base.endswith(suffix):
+            base = base[: -len(suffix)] + "/api"
+            break
+    return base
 
 
 def _split(value: str) -> list[str]:
@@ -98,9 +129,16 @@ def load() -> Config:
 
     # Local dev override: talk directly to a hub with a long-lived token.
     ws_url = os.getenv("HA_WS_URL", SUPERVISOR_WS_URL)
-    rest_url = os.getenv("HA_REST_URL", SUPERVISOR_REST_URL)
+    if os.getenv("HA_REST_URL"):
+        rest_url = os.environ["HA_REST_URL"]
+    elif os.getenv("HA_WS_URL"):
+        rest_url = _derive_rest_url(ws_url)  # standalone: derive REST from the WS URL
+    else:
+        rest_url = SUPERVISOR_REST_URL
     if os.getenv("HA_TOKEN"):
         token = os.environ["HA_TOKEN"]
+
+    domains = list(opts.get("controllable_domains", []) or []) or list(DEFAULT_CONTROLLABLE_DOMAINS)
 
     cfg = Config(
         cloud_base_url=opts.get("cloud_base_url", "https://api.cogentlog.io"),
@@ -113,6 +151,9 @@ def load() -> Config:
         flush_interval_seconds=int(opts.get("flush_interval_seconds", 10)),
         max_spool_events=int(opts.get("max_spool_events", 50000)),
         log_level=str(opts.get("log_level", "info")),
+        enable_commands=bool(opts.get("enable_commands", True)),
+        command_poll_interval=int(opts.get("command_poll_interval", 5)),
+        controllable_domains=domains,
         supervisor_token=token,
         ha_ws_url=ws_url,
         ha_rest_url=rest_url,

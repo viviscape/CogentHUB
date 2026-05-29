@@ -15,6 +15,7 @@ import aiohttp
 from . import config as config_mod
 from .batcher import Batcher
 from .cloud_client import CloudClient
+from .commands import CommandExecutor, command_loop
 from .ha_client import HAClient
 from .models import domain_of, normalize_state_changed
 
@@ -84,7 +85,8 @@ async def amain() -> None:
             pass  # not available on all platforms
 
     async with aiohttp.ClientSession() as session:
-        cloud = CloudClient(cfg.telemetry_url, cfg.cloud_api_key, session)
+        cloud = CloudClient(cfg.telemetry_url, cfg.cloud_api_key, session,
+                            commands_url=cfg.commands_url)
         batcher = Batcher(
             cloud=cloud,
             hub_id=cfg.hub_id,
@@ -97,14 +99,21 @@ async def amain() -> None:
 
         flush_task = asyncio.create_task(batcher.run(), name="batcher")
         stream_task = asyncio.create_task(_stream_events(cfg, session, batcher, stop), name="stream")
+        tasks = [flush_task, stream_task]
+
+        if cfg.enable_commands:
+            executor = CommandExecutor(session, cfg.ha_rest_url, cfg.supervisor_token, cfg.controllable_domains)
+            tasks.append(asyncio.create_task(command_loop(cfg, cloud, executor, stop), name="commands"))
+        else:
+            _LOG.info("command channel disabled (enable_commands=false)")
 
         await stop.wait()
         _LOG.info("shutdown requested — draining...")
 
-        stream_task.cancel()
         await batcher.stop()
-        flush_task.cancel()
-        for task in (stream_task, flush_task):
+        for task in tasks:
+            task.cancel()
+        for task in tasks:
             try:
                 await task
             except asyncio.CancelledError:

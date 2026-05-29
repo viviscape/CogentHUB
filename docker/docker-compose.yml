@@ -24,6 +24,9 @@ services:
       BATCH_SIZE: ${BATCH_SIZE:-50}
       FLUSH_INTERVAL_SECONDS: ${FLUSH_INTERVAL_SECONDS:-10}
       MAX_SPOOL_EVENTS: ${MAX_SPOOL_EVENTS:-50000}
+      ENABLE_COMMANDS: ${ENABLE_COMMANDS:-true}
+      COMMAND_POLL_INTERVAL: ${COMMAND_POLL_INTERVAL:-5}
+      CONTROLLABLE_DOMAINS: ${CONTROLLABLE_DOMAINS:-switch,light,scene,script,input_boolean}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - cogent-hub-data:/data

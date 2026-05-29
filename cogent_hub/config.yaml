@@ -1,5 +1,5 @@
 name: Cogent Hub Connector
-version: "0.1.0"
+version: "0.2.0"
 slug: cogent_hub
 description: >-
   Streams Home Assistant telemetry to the Cogent Cloud API and (Phase 2)
@@ -32,6 +32,14 @@ options:
   batch_size: 50
   flush_interval_seconds: 10
   max_spool_events: 50000
+  enable_commands: true
+  command_poll_interval: 5
+  controllable_domains:
+    - switch
+    - light
+    - scene
+    - script
+    - input_boolean
   log_level: info
 schema:
   cloud_base_url: url
@@ -45,4 +53,8 @@ schema:
   batch_size: int(1,1000)
   flush_interval_seconds: int(1,3600)
   max_spool_events: int(0,1000000)
+  enable_commands: bool
+  command_poll_interval: int(1,3600)
+  controllable_domains:
+    - str
   log_level: list(trace|debug|info|notice|warning|error|fatal)
