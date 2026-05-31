@@ -46,6 +46,13 @@ async def _stream_events(cfg: config_mod.Config, session: aiohttp.ClientSession,
         ha = HAClient(cfg.ha_ws_url, cfg.supervisor_token, session)
         try:
             await ha.connect()
+            # Map entity_id -> integration before subscribing, so the result frame
+            # isn't interleaved with events. Refreshed on every (re)connect.
+            try:
+                platform_map = await ha.fetch_entity_registry()
+            except Exception as exc:  # noqa: BLE001 — registry is best-effort enrichment
+                _LOG.warning("entity registry fetch failed (%s); source labels unavailable", exc)
+                platform_map = {}
             await ha.subscribe_state_changed()
             backoff = 1
             async for event in ha.events():
@@ -55,7 +62,9 @@ async def _stream_events(cfg: config_mod.Config, session: aiohttp.ClientSession,
                 entity_id = data.get("entity_id", "")
                 if not _passes_filter(cfg, entity_id):
                     continue
-                normalized = normalize_state_changed(data, cfg.send_attributes)
+                normalized = normalize_state_changed(
+                    data, cfg.send_attributes, platform_map.get(entity_id)
+                )
                 if normalized is not None:
                     batcher.add(normalized)
         except Exception as exc:  # noqa: BLE001 — keep the connector alive on any HA error

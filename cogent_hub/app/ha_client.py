@@ -58,6 +58,37 @@ class HAClient:
                 _LOG.info("subscribed to state_changed events")
                 return sub_id
 
+    async def fetch_entity_registry(self) -> dict:
+        """Return ``{entity_id: integration}`` from the Home Assistant entity registry.
+
+        Home Assistant ``state_changed`` events do not carry the integration that
+        owns an entity — that lives in the entity registry (``entry.platform``).
+        Fetching it lets the cloud classify each device's source for the Cogent
+        Connect "Sources" view.
+
+        Call this right after :meth:`connect` and BEFORE
+        :meth:`subscribe_state_changed`, so the result frame is not interleaved
+        with event frames. Returns ``{}`` on failure — telemetry still flows, the
+        integration label is simply absent.
+        """
+        assert self._ws is not None
+        req_id = self._next_id()
+        await self._ws.send_json({"id": req_id, "type": "config/entity_registry/list"})
+        while True:
+            msg = await self._ws.receive_json()
+            if msg.get("id") == req_id and msg.get("type") == "result":
+                if not msg.get("success", False):
+                    _LOG.warning("entity_registry/list failed: %s", msg)
+                    return {}
+                mapping = {}
+                for entry in msg.get("result", []) or []:
+                    entity_id = entry.get("entity_id")
+                    platform = entry.get("platform")
+                    if entity_id and platform:
+                        mapping[entity_id] = platform
+                _LOG.info("entity registry: %d entities mapped to integrations", len(mapping))
+                return mapping
+
     async def events(self) -> AsyncIterator[dict]:
         """Yield raw HA event payloads (the ``event`` dict of each event frame)."""
         assert self._ws is not None
