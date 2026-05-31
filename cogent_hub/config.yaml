@@ -2,8 +2,9 @@ name: Cogent Hub Connector
 version: "0.3.0"
 slug: cogent_hub
 description: >-
-  Streams Home Assistant telemetry to the Cogent Cloud API and (Phase 2)
-  executes cloud-issued device triggers on the hub.
+  Connect this hub to Cogent Connect: stream live device telemetry to the
+  Cogent Cloud and remotely manage your devices from Cogent Connect —
+  secure, store-and-forward, outbound-only.
 url: https://github.com/viviscape/CogentHUB
 arch:
   - aarch64
